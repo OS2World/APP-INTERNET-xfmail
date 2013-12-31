@@ -1,0 +1,37 @@
+Welcome to XFmail for OS/2 !
+
+To use this program you will need:
+
+- OS/2 (Tested here with Merlin and Warp V3)
+- the EMX runtime environment (at least 0.9c)
+- XFree86 for OS/2
+- xforms086 (available on http://set.gmd.de/~veit/os2/xf86ported.html)
+  WARNING: Versions dated before 2nd May 1997 will approximatly not work.
+  
+Optional you could install pgp (I have not tested this yet) and other helper
+apps like mosaic as viewers. I had no success with ispell, because it will not run
+in a xterm.
+
+The version you find here is xfmail-1.1 which, in my eyes has many improvements over
+1.0. I have not tested everything, especially only sending and receiving via POP and 
+would like to here about your success or missuccess.
+
+Port-specific questions and suggestions to:
+
+Peter Ganten
+University of Bremen
+j09g@zfn.uni-bremen.de
+http://www.uni-bremen.de/~j09g
+
+For everithing else visit:
+http://burka.netvision.net.il/xfmail/xfmail.html
+
+Have Fun !
+
+Port Specific Changes:
+
+5/5/97: Fixed a Problem with rename() under WARP 3. While it is stated in the
+	EMX Library Reference, that rename() under EMX will fail, if the
+	target exists, it seems not to fail under Merlin. No we look for every
+	target, deleting it before renaming.
+

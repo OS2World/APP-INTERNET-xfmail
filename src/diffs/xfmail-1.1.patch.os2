@@ -1,0 +1,551 @@
+diff -C 2 -r -P -B tmp/xfmail/mail/fmail.c xfmail/mail/fmail.c
+*** tmp/xfmail/mail/fmail.c	Sun Apr 20 07:00:38 1997
+--- xfmail/mail/fmail.c	Mon May  5 20:53:36 1997
+***************
+*** 23,26 ****
+--- 23,29 ----
+  #include <umail.h>
+  #include <math.h>
++ #ifdef __EMX__
++ #include <float.h>
++ #endif
+  
+  char    lockname[MAXPATHLEN];
+***************
+*** 1516,1522 ****
+       return NULL; }
+  
+    if (fchmod(fileno(mfd), 00600) == -1)
+          display_msg(MSG_WARN, "Can not change mode of", "%s", message->get_file(message));
+! 
+  
+    print_message_header(message, mfd);
+--- 1519,1526 ----
+       return NULL; }
+  
++ #ifndef __EMX__
+    if (fchmod(fileno(mfd), 00600) == -1)
+          display_msg(MSG_WARN, "Can not change mode of", "%s", message->get_file(message));
+! #endif
+  
+    print_message_header(message, mfd);
+***************
+*** 1951,1955 ****
+--- 1955,1963 ----
+    if (!(msg = open(str, O_RDONLY | O_CREAT | O_EXLOCK | O_NONBLOCK)))
+  #else
++ #ifndef __EMX__
+    if (!(msg = open(str, O_RDONLY | O_CREAT)))
++ #else
++   if (!(msg = open(str, O_RDONLY )))
++ #endif
+  #endif
+  	return NULL;
+***************
+*** 2589,2592 ****
+--- 2597,2608 ----
+   free(rtext);
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(tfile, 0)==0) { 
++  	if (unlink(tfile)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", tfile);
++ 	}
++  }
++ #endif
++ 
+   if (rename(tmp, tfile) == -1) {
+  	display_msg(MSG_WARN, "Can not rename", "%s to %s", tmp, tfile);
+***************
+*** 2707,2710 ****
+--- 2723,2734 ----
+   fclose(mfd);
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(tfile, 0)==0) { 
++  	if (unlink(tfile)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", tfile);
++ 	}
++  }
++ #endif
++ 
+   if (rename(tmp, tfile) == -1) {
+  	display_msg(MSG_WARN, "Can not rename", "%s to %s", tmp, tfile);
+***************
+*** 3965,3968 ****
+--- 3801,3811 ----
+  	if (display_msg(MSG_QUEST, "create folder", "%s is not a directory, save it?", path)) {
+  		sprintf(buf, "%s.bak", path);
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++ 		 if (access(buf, 0)==0) { 
++ 		 	if (unlink(buf)!=0) {
++ 				display_msg(MSG_WARN, "unlink", "delete %s before moving", buf);
++ 			}
++ 		 }
++ #endif
+  		if (rename(path, buf) == -1) {
+  		 display_msg(MSG_WARN, "open folder", "Cannot rename %s", path);
+***************
+*** 4642,4647 ****
+  		return -1;		}
+  	}
+- 				}
+  
+   if (rename(folder->fold_path, new_path) == -1) {
+  	display_msg(MSG_WARN, "rename folder", "Failed to rename directory");
+--- 4358,4370 ----
+  		return -1;		}
+  	}
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(new_path, 0)==0) { 
++  	if (unlink(new_path)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", new_path);
++ 	}
++  }
++ #endif
++ 			}
+   if (rename(folder->fold_path, new_path) == -1) {
+  	display_msg(MSG_WARN, "rename folder", "Failed to rename directory");
+diff -C 2 -r -P -B tmp/xfmail/mail/fmail.h xfmail/mail/fmail.h
+*** tmp/xfmail/mail/fmail.h	Wed Apr 16 09:46:46 1997
+--- xfmail/mail/fmail.h	Mon May  5 18:24:14 1997
+***************
+*** 69,72 ****
+--- 69,85 ----
+  #endif
+  
++ /* All the Stuff os/2 does not have */
++ #ifdef __EMX__
++ #define lstat stat
++ #define getwd(s) _getcwd2(s,MAXPATHLEN)
++ #define chdir(s) _chdir2(s)
++ #define S_ISLNK(mode) (0)
++ #define S_ISBLK(mode) (0)
++ #define symlink(t,s) (0)
++ #define readlink(s,t,l) (strcpy(t,s),strlen(t))
++ #define mkfifo(p,m) (0)
++ #define mknod(p,m,d) (0)
++ #endif
++ 
+  #define	MMAP_MSG
+  
+***************
+*** 75,79 ****
+  #endif
+  
+! #if !defined(sun) && !defined(HP) && !defined(SVR4)
+  #include <paths.h>
+  #endif
+--- 88,92 ----
+  #endif
+  
+! #if !defined(sun) && !defined(HP) && !defined(SVR4) && !defined(__EMX__)
+  #include <paths.h>
+  #endif
+diff -C 2 -r -P -B tmp/xfmail/mail/mv.c xfmail/mail/mv.c
+*** tmp/xfmail/mail/mv.c	Tue Apr  1 09:49:10 1997
+--- xfmail/mail/mv.c	Mon May  5 20:26:10 1997
+***************
+*** 62,65 ****
+--- 62,68 ----
+  #include <sys/time.h>
+  #include <sys/wait.h>
++ #ifdef __EMX__
++ #include <sys/types.h>
++ #endif
+  #include <sys/stat.h>
+  
+***************
+*** 104,107 ****
+--- 107,119 ----
+  	int st;
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++ 	if (access(to, 0)==0) { 
++ 		if (unlink(to)!=0) {
++ 			display_msg(MSG_WARN, "unlink", "delete %s before moving", to);
++ 		}
++ 	}
++ #endif
++ 
++ 
+  	if (!rename(from, to))
+  		return (0);
+***************
+*** 156,160 ****
+--- 168,176 ----
+  		return (1);
+  	}
++ #ifndef __EMX__
+  	if (!blen && !(bp = malloc(blen = sbp->st_blksize))) {
++ #else
++ 	if (!blen && !(bp = malloc(blen = sbp->st_size))) {
++ #endif
+  		display_msg(MSG_WARN, "fastcopy", "");
+  		return (1);
+***************
+*** 179,182 ****
+--- 195,199 ----
+  		display_msg(MSG_WARN, "fastcopy", "%s: set owner/group", to);
+  */
++ #ifndef __EMX__
+  	fchown(to_fd, sbp->st_uid, sbp->st_gid);
+  
+***************
+*** 189,192 ****
+--- 206,210 ----
+  	if (utimes(to, tval))
+  		display_msg(MSG_WARN, "fastcopy", "%s: set times", to);
++ #endif
+  
+  	if (close(to_fd)) {
+diff -C 2 -r -P -B tmp/xfmail/mail/uucode.c xfmail/mail/uucode.c
+*** tmp/xfmail/mail/uucode.c	Sun Dec 15 09:22:08 1996
+--- xfmail/mail/uucode.c	Mon May  5 20:55:14 1997
+***************
+*** 118,121 ****
+--- 118,128 ----
+   fclose(f_out);
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(tfile, 0)==0) { 
++ 	if (unlink(tfile)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", tfile);
++ 	}
++  }
++ #endif
+   if (rename(tmp, tfile) == -1) {
+  	display_msg(MSG_WARN, "uuencode", "Can not rename %s to %s", tmp,tfile);
+***************
+*** 204,209 ****
+--- 211,218 ----
+  	return -1;	}
+  
++ #ifndef __EMX__
+   if (fchmod(fileno(f_out), mode&0666) == -1) 
+  		display_msg(MSG_WARN, "uudecode", "Can not change mode on %s to %d, ignoring", fout, mode);
++ #endif
+  
+   /* for each input line */
+diff -C 2 -r -P -B tmp/xfmail/readme-xfmail.os2 xfmail/readme-xfmail.os2
+*** tmp/xfmail/readme-xfmail.os2	Sun Feb  7 01:28:16 2106
+--- xfmail/readme-xfmail.os2	Mon May  5 21:25:52 1997
+***************
+*** 0 ****
+--- 1,36 ----
++ Welcome to XFmail for OS/2 !
++ 
++ To use this program you will need:
++ 
++ - OS/2 (Tested here with Merlin and Warp V3)
++ - the EMX runtime environment (at least 0.9c)
++ - XFree86 for OS/2
++ - xforms086 (available on http://set.gmd.de/~veit/os2/xf86ported.html)
++   WARNING: Versions dated before 2nd May 1997 will approximatly not work.
++   
++ Optional you could install pgp (I have not tested this yet) and other helper
++ apps like mosaic as viewers. I had no success with ispell, because it will not run
++ in a xterm.
++ 
++ The version you find here is xfmail-1.1 which, in my eyes has many improvements over
++ 1.0. I have not tested everything, especially only sending and receiving via POP and 
++ would like to here about your success or missuccess.
++ 
++ Port-specific questions and suggestions to:
++ 
++ Peter Ganten
++ University of Bremen
++ j09g@zfn.uni-bremen.de
++ http://www.uni-bremen.de/~j09g
++ 
++ For everithing else visit:
++ http://burka.netvision.net.il/xfmail/xfmail.html
++ 
++ Have Fun !
++ 
++ Port Specific Changes:
++ 
++ 5/5/97: Fixed a Problem with rename() under WARP 3. While it is stated in the
++ 	EMX Library Reference, that rename() under EMX will fail, if the
++ 	target exists, it seems not to fail under Merlin. No we look for every
++ 	target, deleting it before renaming.
+diff -C 2 -r -P -B tmp/xfmail/ui/addr_book.c xfmail/ui/addr_book.c
+*** tmp/xfmail/ui/addr_book.c	Sun Apr 20 07:00:46 1997
+--- xfmail/ui/addr_book.c	Mon May  5 20:57:00 1997
+***************
+*** 407,411 ****
+      return -1;
+  			  }
+! 
+    if (rename(buftmp, buf) == -1) {
+  	display_msg(MSG_WARN, "save book", "rename failed");
+--- 407,417 ----
+      return -1;
+  			  }
+! #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
+!  if (access(buf, 0)==0) { 
+! 	if (unlink(buf)!=0) {
+! 		display_msg(MSG_WARN, "unlink", "delete %s before moving", buf);
+! 	}
+! }
+! #endif
+    if (rename(buftmp, buf) == -1) {
+  	display_msg(MSG_WARN, "save book", "rename failed");
+***************
+*** 477,480 ****
+--- 483,493 ----
+   fclose(nafd);
+  
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(buf, 0)==0) { 
++ 	if (unlink(buf)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", buf);
++ 	}
++ }
++ #endif
+   if (rename(buf1, buf) == -1)   {
+  	display_msg(MSG_WARN, "convert", "failed to rename %s\nto%s", buf1,buf);
+diff -C 2 -r -P -B tmp/xfmail/ui/cfgfile.c xfmail/ui/cfgfile.c
+*** tmp/xfmail/ui/cfgfile.c	Sun Apr 20 07:00:48 1997
+--- xfmail/ui/cfgfile.c	Mon May  5 20:58:28 1997
+***************
+*** 317,320 ****
+--- 317,327 ----
+  
+  cfg_unlock();
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++  if (access(__fname, 0)==0) { 
++ 	if (unlink(__fname)!=0) {
++ 		display_msg(MSG_WARN, "unlink", "delete %s before moving", __fname);
++ 	}
++ }
++ #endif
+  if (rename(ctmp, __fname) == -1)
+  	display_msg(MSG_WARN, "can not rename", "%s to %s", ctmp, __fname);
+diff -C 2 -r -P -B tmp/xfmail/ui/child.c xfmail/ui/child.c
+*** tmp/xfmail/ui/child.c	Sun Apr 20 07:00:48 1997
+--- xfmail/ui/child.c	Mon May  5 18:24:14 1997
+***************
+*** 433,438 ****
+--- 433,440 ----
+                  signal(SIGINT, SIG_IGN);
+                  signal(SIGQUIT, SIG_IGN);
++ #ifndef __EMX__
+                  signal(SIGTTIN, SIG_IGN);
+                  signal(SIGTTOU, SIG_IGN);
++ #endif
+                  execvp(buf, namelist);
+                  display_msg(MSG_STDERR, "EXECUTION ERROR", "execvp failed");
+***************
+*** 470,474 ****
+  {
+  struct timeval t;
+! #ifdef	__linux__
+  fd_set read_fds;
+  #else
+--- 472,476 ----
+  {
+  struct timeval t;
+! #if defined(__linux__) || defined (__EMX__)
+  fd_set read_fds;
+  #else
+***************
+*** 524,528 ****
+  int fd, type;
+  {  
+! #ifdef	__linux__
+  fd_set read_fds, write_fds, except_fds;
+  #else
+--- 526,530 ----
+  int fd, type;
+  {  
+! #if defined(__linux__) || defined(__EMX__)
+  fd_set read_fds, write_fds, except_fds;
+  #else
+diff -C 2 -r -P -B tmp/xfmail/ui/makefile.os2 xfmail/ui/makefile.os2
+*** tmp/xfmail/ui/makefile.os2	Sun Feb  7 01:28:16 2106
+--- xfmail/ui/makefile.os2	Mon May  5 20:27:38 1997
+***************
+*** 0 ****
+--- 1,98 ----
++ # 
++ # Copyright(c) 1995,1996 by Gennady B. Sorokopud (gena@NetVision.net.il) 
++ # 
++ # This software can be freely redistributed and modified for 
++ # non-commercial purposes as long as above copyright 
++ # message and this permission notice appear in all 
++ # copies of distributed source code and included as separate file 
++ # in binary distribution. 
++ #       
++ # Any commercial use of this software requires author's permission. 
++ # 
++ # This software is provided "as is" without expressed or implied 
++ # warranty of any kind. 
++ # Under no circumstances is the author responsible for the proper 
++ # functioning of this software, nor does the author assume any 
++ # responsibility for damages incurred with its use. 
++ # 
++ 
++ # $Id: Makefile.Linux,v 1.35 1996/12/15 14:22:20 gena Exp $
++ 
++ # change the following settings according to your system configuration
++ 
++ SHELL = sh.exe # I've used Dale de Priests ksh port here
++ 
++ XFINC = 				# where forms.h is located
++ XFLIB = -lforms				# how to link libforms.a
++ 
++ LIBS =  -L$(X11ROOT)/xfree86/lib -lX11 -lXt -lXext -lXpm -lm -lICE -lm -lsocket \
++ 	d:/emx/lib/binmode.o -Ld:/usr/lib -lmmap # additional libraries
++ INCS = -I$(X11ROOT)/xfree86/include/X11 -I/include	# where X include files are
++ 
++ BINDIR = $(X11ROOT)/xfree86/bin                 # where binary should be installed
++ MANDIR = $(X11ROOT)/xfree86/man/man1            # where to install manpage
++ 
++ # if you want faces support uncomment the following lines
++ FACELIB = -L../compface -llibface
++ FACEFLAGS = -I../compface -DFACES
++ FACEDP = libface
++ # NOTE: this enables support only for mailheader faces.
++ # Support for faces (picons) database is builtin and could
++ # be turned on or off using Faces configuration dialog.
++ 
++ # to turn on sound support uncomment the following line
++ # if you want to turn on NAS support uncomment -DNAS_SOUND and -laudio
++ # SOUNDFLAGS = -DUSE_SOUND # -DNAS_SOUND
++ # SOUNDLIB = # -laudio
++ 
++ # end of user configurable settings
++ 
++ VPATH = .:../mail:../editor
++ 
++ CC = gcc
++ HELPFILE = help.txt
++ CHANGELOG = Changelog ${CHANGELOG}
++ CFLAGS = -O2 ${FACEFLAGS} ${SOUNDFLAGS} ${INCS} ${XFINC} \
++ 	-I. -I../mail -I../pixmap -I../editor \
++ 	-O2 -D__ST_MT_ERRNO -Zmtd -Zsysv-signals -Zbin-files -Zexe
++ LDADD = ${XFLIB} ${LIBS} ${FACELIB} ${SOUNDLIB} \
++ 	-O2 -D__ST_MT_ERRNO -Zmtd -Zsysv-signals -Zbin-files -Zexe 
++ 
++ PROG = xfmail
++ MAN = xfmail.1
++ 
++ SRCS =  xfmail.c cfgfile.c fmail.c mv.c msg.c \
++ 	dialogs.c choose_folder.c about.c help.c addr_book.c \
++ 	font.c config.c inc.c misc.c sign.c sort.c rules.c \
++ 	view_edit.c child.c pop.c pop_smtp.c smtp.c uucode.c \
++ 	search.c faces.c log.c mime.c mime_conf.c rep_fwd.c \
++ 	int_conf.c sound.c imap_conf.c imap.c fl_edit.c \
++ 	textbuf.c fl_scrollbar.c pgp.c keymap.c strcasecmp.c
++ 
++ OBJS = $(patsubst %.c, %.o, ${SRCS})
++ 
++ ${PROG}: ${OBJS} ${FACEDP}
++ 	${CC} -o $(PROG) ${OBJS} ${LDADD}
++ 
++ all: ${PROG}
++ 
++ install: ${PROG}.exe
++ 	install -c -s -o bin -g bin -m 555 ${PROG}.exe ${BINDIR}
++ 	install -c -o bin -g bin -m 444 ${MAN} ${MANDIR}
++ 
++ clean:
++ 	rm -f ${OBJS} ${PROG} *.exe core version.h help.h
++ 	cd ..\compface && ${MAKE} clean
++ 
++ help.h: ${HELPFILE}
++ 	@sh ./help_gen
++ 
++ version.h: version.src xfmail.c
++ 	sh sed "s/compdate/`LC_TIME=C;export LC_TIME;date` by `whoami`@`hostname`/g" version.src > version.h
++ 
++ xfmail.o: version.h
++ 
++ libface:
++ 	cd ..\compface && ${MAKE}
++ 
++ help.o: help.h
+diff -C 2 -r -P -B tmp/xfmail/ui/strcasecmp.c xfmail/ui/strcasecmp.c
+*** tmp/xfmail/ui/strcasecmp.c	Sun Feb  7 01:28:16 2106
+--- xfmail/ui/strcasecmp.c	Mon May  5 18:24:16 1997
+***************
+*** 0 ****
+--- 1,44 ----
++ 
++ #include <stdlib.h>
++ #include <stdio.h>
++ #include <ctype.h>
++ 
++ /*
++  * By Ian Malcom Brown.
++  * Changes by BG: prototypes with const,
++  * moved the ++ expressions out of the macro.
++  */
++ int strcasecmp(const char *str1, const char *str2)
++ {
++     int	c1, c2;
++ 
++ 
++     do {
++ 	c1 = *str1++;
++ 	c2 = *str2++;
++ 	c1 = tolower(c1);
++ 	c2 = tolower(c2);
++     } while (c1 != 0 && c2 != 0 && c1 == c2);
++ 
++     return (c1 - c2);
++ }
++ 
++ /*
++  * By Bert Gijsbers, derived from Ian Malcom Brown's strcasecmp().
++  */
++ int strncasecmp(const char *str1, const char *str2, size_t n)
++ {
++     int	c1, c2;
++ 
++     do {
++ 	if (n-- <= 0) {
++ 	    return 0;
++ 	}
++ 	c1 = *str1++;
++ 	c2 = *str2++;
++ 	c1 = tolower(c1);
++ 	c2 = tolower(c2);
++     } while (c1 != 0 && c2 != 0 && c1 == c2);
++ 
++     return (c1 - c2);
++ }
+diff -C 2 -r -P -B tmp/xfmail/ui/version.src xfmail/ui/version.src
+*** tmp/xfmail/ui/version.src	Sun Apr 20 07:00:54 1997
+--- xfmail/ui/version.src	Mon May  5 18:24:16 1997
+***************
+*** 77,80 ****
+--- 77,84 ----
+  #endif
+  
++ #ifdef __EMX__
++ #define XF_OS		"OS/2 with EMX"
++ #endif
++ 
+  #ifndef XF_OS
+  #define XF_OS		"Unknown"
+diff -C 2 -r -P -B tmp/xfmail/ui/xfmail.c xfmail/ui/xfmail.c
+*** tmp/xfmail/ui/xfmail.c	Sun Apr 20 07:00:56 1997
+--- xfmail/ui/xfmail.c	Mon May  5 21:00:30 1997
+***************
+*** 2440,2443 ****
+--- 2440,2451 ----
+  
+  			strcpy(oldname, get_folder_full_name(fld));
++ 
++ #ifdef __EMX__ /* Under OS/2 the file will not be deleted during rename() */
++ 			if (access(str, 0)==0) { 
++ 				if (unlink(str)!=0) {
++ 					display_msg(MSG_WARN, "unlink", "delete %s before moving", str);
++ 				}
++ 			}
++ #endif
+  			if (fld->rename(fld, str) == -1) {
+  				display_msg(MSG_WARN, "rename", "Can not rename folder %s to %s", fld->name(fld), str);
